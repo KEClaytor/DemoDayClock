@@ -45,21 +45,29 @@ def getVoltage(pin):
 
 class Timer():
 
-    def __init__():
+    def __init__(self, testing=False):
         """ Create the timer class
         """
         # How long should we run for, when do we warn and go critical?
-        self.time = 1*60
-        self.warn = 0.5*60
-        self.crit = 0.2*60
+        if testing:
+            self.time = 10
+            self.warn = 5
+            self.crit = 1
+        else:
+            self.time = 8*60
+            self.warn = 2*60
+            self.crit = 1*60
         self._color_okay = (0, 255, 0)
         self._color_warn = (255, 255, 0)
         self._color_crit = (255, 0, 0)
         # Some internal state trackers
         self.start_time = time.monotonic()
         self.is_running = False
+        # Time trackers
+        self.elapsed = 0
+        self.remaining = self.time
 
-    def start():
+    def start(self):
         """ Start or restart the timer
         """
         self.start_time = time.monotonic()
@@ -68,13 +76,22 @@ class Timer():
         self.elapsed = 0
         self.remaining = self.time
 
-    def stop():
+    def stop(self):
         """ Stop the timer
         """
         self.is_running = False
+        # Time trackers
+        self.elapsed = 0
+        self.remaining = self.time
 
-    def get_color():
-        if self.remaining < self.crit:
+    def get_color(self):
+        if self.remaining == 0:
+            # color = tuple(int(c * ) for c in self._color_crit)
+            # print(color)
+            blinks_per_second = 5
+            enable = (int(mytimer.elapsed*blinks_per_second) % 2)
+            color = tuple(c * enable for c in self._color_crit)
+        elif self.remaining < self.crit:
             color = self._color_crit
         elif self.remaining < self.warn:
             color = self._color_warn
@@ -82,15 +99,18 @@ class Timer():
             color = self._color_okay
         return color
 
-    def is_critical():
+    def is_critical(self):
         return self.remaining < self.crit
 
-    def update():
+    def update(self):
         """ Set the current state
         Call this function from the main while loop
         """
-        self.elapsed = time.monotonic() - self.start_time
-        self.remaining = self.time - self.elapsed
+        if self.is_running:
+            self.elapsed = time.monotonic() - self.start_time
+            self.remaining = self.time - self.elapsed
+            if self.remaining < 0:
+                self.remaining = 0
 
 neopixels[0] = (0, 255, 0)
 neopixels[1] = (0, 0, 0)
@@ -100,23 +120,23 @@ neopixels.show()
 
 mytimer = Timer()
 while True:
-    # if mytimer.is_running:
-    #     # Purple
-    #     dot[0] = (191, 0, 255)
-    # else:
-    #     # Turquoise
-    #     dot[0] = (0, 199, 255)
+    mytimer.update()
+
+    if mytimer.is_running:
+        dot[0] = (0, 0, 255)
+    else:
+        dot[0] = (255, 0, 0)
 
     buzzer.value = False
     if not button0.value:
         mytimer.start()
-        dot[0] = (0, 255, 0)
+        dot[0] = (255, 255, 255)
     if not button1.value:
         mytimer.stop()
-        dot[0] = (255, 0, 0)
+        dot[0] = (255, 255, 255)
     if not button2.value:
         buzzer.value = True
-    print((mytimer.remaining, mytimer.elapsed))
+    print((mytimer.remaining, mytimer.elapsed, ))
 
     color = mytimer.get_color()
     neopixels[0] = color
