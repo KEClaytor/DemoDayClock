@@ -43,61 +43,87 @@ neopixels = neopixel.NeoPixel(board.D4, NUMPIXELS, brightness=0.05, auto_write=F
 def getVoltage(pin):
     return (pin.value * 3.3) / 65536
 
-# Helper to give us a nice color swirl
-def wheel(pos):
-    # Input a value 0 to 255 to get a color value.
-    # The colours are a transition r - g - b - back to r.
-    if (pos < 0):
-        color = (0, 0, 0)
-    if (pos > 255):
-        color = (0, 0, 0)
-    if (pos < 85):
-        color = (int(pos * 3), int(255 - (pos*3)), 0)
-    elif (pos < 170):
-        pos -= 85
-        color = (int(255 - pos*3), 0, int(pos*3))
-    else:
-        pos -= 170
-        color = (0, int(pos*3), int(255 - pos*3))
-    # color = (c/3 for c in color)
-    return color
+class Timer():
 
-# also make the neopixels swirl around
-#for p in range(NUMPIXELS):
-    #idx = int ((p * 256 / NUMPIXELS))
-    #neopixels[p] = wheel(idx & 255)
-neopixels[0] = (236, 38, 255)
-neopixels[1] = (255, 235, 20)
+    def __init__():
+        """ Create the timer class
+        """
+        # How long should we run for, when do we warn and go critical?
+        self.time = 1*60
+        self.warn = 0.5*60
+        self.crit = 0.2*60
+        self._color_okay = (0, 255, 0)
+        self._color_warn = (255, 255, 0)
+        self._color_crit = (255, 0, 0)
+        # Some internal state trackers
+        self.start_time = time.monotonic()
+        self.is_running = False
+
+    def start():
+        """ Start or restart the timer
+        """
+        self.start_time = time.monotonic()
+        self.is_running = True
+        # Time trackers
+        self.elapsed = 0
+        self.remaining = self.time
+
+    def stop():
+        """ Stop the timer
+        """
+        self.is_running = False
+
+    def get_color():
+        if self.remaining < self.crit:
+            color = self._color_crit
+        elif self.remaining < self.warn:
+            color = self._color_warn
+        else:
+            color = self._color_okay
+        return color
+
+    def is_critical():
+        return self.remaining < self.crit
+
+    def update():
+        """ Set the current state
+        Call this function from the main while loop
+        """
+        self.elapsed = time.monotonic() - self.start_time
+        self.remaining = self.time - self.elapsed
+
+neopixels[0] = (0, 255, 0)
+neopixels[1] = (0, 0, 0)
 neopixels.show()
 
 ######################### MAIN LOOP ##############################
 
-i = 0
-r, g, b = 0, 0, 0
+mytimer = Timer()
 while True:
-    # spin internal LED around! autoshow is on
-    dot[0] = wheel(i & 255)
+    # if mytimer.is_running:
+    #     # Purple
+    #     dot[0] = (191, 0, 255)
+    # else:
+    #     # Turquoise
+    #     dot[0] = (0, 199, 255)
 
-    i = (i+1) % 256  # run from 0 to 255
-
-    value = 0
     buzzer.value = False
     if not button0.value:
-        value += 1
-        g += 20 % 255
-        buzzer.value = True
+        mytimer.start()
+        dot[0] = (0, 255, 0)
     if not button1.value:
-        value += 2
-        r += 20 % 255
-        buzzer.value = True
+        mytimer.stop()
+        dot[0] = (255, 0, 0)
     if not button2.value:
-        value += -3
-        b += 20 % 255
         buzzer.value = True
-    print((value,))
+    print((mytimer.remaining, mytimer.elapsed))
 
-    # neopixels[0] = (r, b, b)
-    # neopixels[1] = (r, g, b)
-    # neopixels.show()
+    color = mytimer.get_color()
+    neopixels[0] = color
+    neopixels[1] = color
+    neopixels.show()
 
-    time.sleep(0.1) # make bigger to slow down
+    # if mytimer.is_critical():
+    #     buzzer.value = True
+
+    time.sleep(0.1)
