@@ -143,7 +143,9 @@ while True:
     neopixels[1] = color
     neopixels.show()
 
-    # if mytimer.is_critical():
-    #     buzzer.value = True
+    if mytimer.is_critical():
+        buzzer.value = True
+    else:
+        buzzer.value = False
 
     time.sleep(0.1)
